@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Random Level Picker</title>
+    <style>
+        #counter {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Random Level Picker</h1>
+<button onclick="getRandomLevel()">Get Random Level</button>
+<button onclick="getRandomVerifiedLevel()">Get Random Verified Level</button>
+<p id="randomLevel"></p>
+<button onclick="openLevelViewer()">Open in Level Viewer</button>
+<button onclick="downloadLevel()">Download Level</button>
+<button onclick="getLeaderboards()">Get Leaderboards</button>
+<p id="leaderboards"></p>
+<p id="counter">Loading level counts...</p>
+
+<script>
+    let currentLevelIdentifier = '';
+
+    // Get total level count
+    fetch('https://cors-anywhere.herokuapp.com/https://api.slin.dev/total_level_count', {
+        headers: {
+            'Origin': window.location.origin,
+        },
+    })
+        .then(response => response.text())
+        .then(data => {
+            const totalLevelCount = parseInt(data, 10);
+
+            if (!isNaN(totalLevelCount)) {
+                document.getElementById('counter').innerText = `Total Levels: ${totalLevelCount}`;
+            } else {
+                throw new Error('Invalid total level count');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching total level count:', error);
+            document.getElementById('counter').innerText = 'Failed to load total level count';
+        });
+
+    // Note: No need to fetch verified level count separately as it's included in the total count
+
+    function getRandomLevel() {
+        // Make a GET request to the API for a random level
+        fetch('https://api.slin.dev/grab/v1/get_random_level')
+            .then(response => response.json())
+            .then(data => {
+                // Update the HTML content with information from the API response
+                const levelInfo = getLevelInfo(data);
+                document.getElementById('randomLevel').innerHTML = levelInfo;
+
+                // Save the current level identifier for later use
+                currentLevelIdentifier = data.identifier;
+            })
+            .catch(error => {
+                console.error('Error fetching random level:', error);
+            });
+    }
+
+    function getRandomVerifiedLevel() {
+        // Make a GET request to the API for a random verified level
+        fetch('https://api.slin.dev/grab/v1/get_random_level?type=ok')
+            .then(response => response.json())
+            .then(data => {
+                // Update the HTML content with information from the API response
+                const levelInfo = getLevelInfo(data);
+                document.getElementById('randomLevel').innerHTML = levelInfo;
+
+                // Save the current level identifier for later use
+                currentLevelIdentifier = data.identifier;
+            })
+            .catch(error => {
+                console.error('Error fetching random verified level:', error);
+            });
+    }
+
+    function getLeaderboards() {
+        // Check if a random level has been fetched
+        if (currentLevelIdentifier) {
+            // Make a GET request to the API for the leaderboards of the current level
+            fetch(`https://api.slin.dev/grab/v1/statistics_top_leaderboard/${currentLevelIdentifier}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update the HTML content with information from the API response
+                    const leaderboardsInfo = getLeaderboardsInfo(data);
+                    document.getElementById('leaderboards').innerHTML = leaderboardsInfo;
+                })
+                .catch(error => {
+                    console.error('Error fetching leaderboards:', error);
+                });
+        } else {
+            alert('Please get a random level first.');
+        }
+    }
+
+    function getLeaderboardsInfo(data) {
+        // Check if the leaderboards data is defined and not null
+        if (data && Array.isArray(data) && data.length > 0) {
+            const leaderboardsList = data.map((entry, index) => {
+                return `${index + 1}. ${entry.user_name} ${entry.best_time}`;
+            }).join('<br>');
+
+            return leaderboardsList;
+        } else {
+            return 'No leaderboards data available.';
+        }
+    }
+
+    function getLevelInfo(data) {
+        // Check if title, description, and creator are defined and not null
+        const title = data.title ? `Title: ${data.title}<br>` : '';
+        const description = data.description ? `Description: ${data.description}<br>` : '';
+        const complexity = `Complexity: ${data.complexity}<br>`;
+        const creator = data.creators ? `Creator: ${data.creators.join(', ')}<br>` : '';
+
+        return title + description + complexity + creator;
+    }
+
+    function openLevelViewer() {
+        // Check if a random level has been fetched
+        if (currentLevelIdentifier) {
+            // Open the level viewer with the specific identifier
+            window.open(`https://grabvr.quest/levels/viewer/?level=${currentLevelIdentifier}`, '_blank');
+        } else {
+            alert('Please get a random level first.');
+        }
+    }
+
+    function downloadLevel() {
+        // Check if a random level has been fetched
+        if (currentLevelIdentifier) {
+            // Open the download page with the specific identifier
+            window.open(`https://grab-tools.live/download.html?level=${currentLevelIdentifier}`, '_blank');
+        } else {
+            alert('Please get a random level first.');
+        }
+    }
+</script>
+
+</body>
+</html>
